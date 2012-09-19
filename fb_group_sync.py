@@ -45,14 +45,15 @@ def index():
 	    
                 r = urllib2.urlopen(req)
 	        print r.read()
-            else:
+            elif(code[0]==1):
                print post.get('message')
                 #make this regex better if you want
 	       try:
                    urls =  re.findall("(?P<url>https?://[^\s]+)", post.get('message'))
                    description = post.get('message').replace('"','')
                    for url in urls:
-                       description.replace(url,"")	       
+                       description = description.replace("\n"," ")	       
+                       description = description.replace(url,"")	       
                    description = description  + '-' + post.get('from').get('name').encode("ascii","ignore").replace('"','')
 
                    for url in urls:
