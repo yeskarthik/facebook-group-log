@@ -38,17 +38,12 @@ def index():
                 else:
                     description = post.get('message').replace('"','') + '-' + post.get('from').get('name').encode('ascii','ignore')
       	        values = '{"url": "'+link+'" , "list":"'+config.get('kippt','listuri')+'", "title":"'+title+'", "notes":"'+description+ '"}'
-                print values
-                req = urllib2.Request(config.get('kippt','url'),values)
-                req.add_header('X-Kippt-Username', config.get('kippt','username'))
-                req.add_header('X-Kippt-API-Token', config.get('kippt','apitoken'))
-	    
-                r = urllib2.urlopen(req)
-	        print r.read()
+                r = postToKippt(values)
+                postToLinkModel(r,post.get('id'))
             elif(code[0]==1):
                print post.get('message')
                 #make this regex better if you want
-	       try:
+               try:
                    urls =  re.findall("(?P<url>https?://[^\s]+)", post.get('message'))
                    description = post.get('message').replace('"','')
                    for url in urls:
@@ -58,14 +53,21 @@ def index():
 
                    for url in urls:
                        values = '{"url": "'+url+'" , "list": "'+config.get('kippt','listuri')+'", "notes":"'+description+'"}' 
-                       req = urllib2.Request(config.get('kippt','url'),values)
-                       req.add_header('X-Kippt-Username', config.get('kippt','username'))
-                       req.add_header('X-Kippt-API-Token', config.get('kippt','apitoken'))
-                       r = urllib2.urlopen(req)
+                       r = postToKippt(values)
+                       postToLinkModel(r,post.get('id'))
                except:
                    pass
+def postToKippt(values):
+    req = urllib2.Request(config.get('kippt','url'),values)
+    req.add_header('X-Kippt-Username', config.get('kippt','username'))
+    req.add_header('X-Kippt-API-Token', config.get('kippt','apitoken'))
+    r = urllib2.urlopen(req)
+    return r.read()                                                                   
 
+def postToLinkModel(response, postid):
+    resp_data = json.loads(response)
+    cursor.execute("""SELECT InsertLink(%s, %s, %s, %s) """,(resp_data.get('url'),resp_data.get('title'), resp_data.get('notes'), postid ))
+    print resp_data.get('url') + resp_data.get('title') + resp_data.get('notes') + postid
 
-  
 if __name__ == "__main__":
     index()
