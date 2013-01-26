@@ -7,6 +7,7 @@ import MySQLdb
 import logging
 import traceback
 from datetime import datetime
+import iso8601
 
 class FbGroupArchiver:
 
@@ -33,11 +34,14 @@ class FbGroupArchiver:
         for i,post in enumerate(jsondata['data']):
             try:
                 print post.get('id')
-                post_id = post.get('id')
+                post_id = post.get('id').rsplit('_',1)[1]
                 message = post.get('message')
-                author_name = post.get('from').get('name').encode('ascii','ignore').replace('"','')
+		created_on_d = iso8601.parse_date(post.get('created_time'))
+		created_on = created_on_d.strftime('%Y-%m-%d %H:%M:%S')
+                updated_on_d = iso8601.parse_date(post.get('updated_time'))
+                updated_on = created_on_d.strftime('%Y-%m-%d %H:%M:%S')
+		author_name = post.get('from').get('name').encode('ascii','ignore').replace('"','')
                 author_id = post.get('from').get('id')
-                
                 if(message != None):
                     message = message.encode('ascii','ignore').replace('"','')
                     comments_count = None
@@ -48,7 +52,7 @@ class FbGroupArchiver:
                     if(post.get('likes') != None):
                         likes_count = post.get('likes').get('count')
                     # Do the DB part here
-                    cursor.execute("""SELECT InsertPost(%s, %s, %s, %s, %s, %s)""", (author_name, author_id, message, likes_count, comments_count, post_id))
+                    cursor.execute("""SELECT InsertPost(%s, %s, %s, %s, %s, %s, %s, %s)""", (author_name, author_id, message, likes_count, comments_count, created_on, updated_on, post_id))
                     code = cursor.fetchone()
                     # code[0] indicates the number of affected rows, if its 1 -> successful insert, if not the post already exists in thr Db
                     if(code[0] == 1 and post.get('link') !=  None):
@@ -70,7 +74,7 @@ class FbGroupArchiver:
                        
                        # make this regex better if you want
                        try:
-                           description = post.get('message').replace('"','')
+                           description = post.get('message').encode('ascii','ignore').replace('"','')
                            description = controlchar_regex.sub(' ',description)
                            urls =  re.findall("(?P<url>https?://[^\s]+)", description)
                            for url in urls:
@@ -104,4 +108,7 @@ class FbGroupArchiver:
     def post_link(self, response, post_id):
         cursor = self.cursor
         resp_data = json.loads(response)
-        cursor.execute("""SELECT InsertLink(%s, %s, %s, %s) """,(resp_data.get('url'),resp_data.get('title'), resp_data.get('notes'), post_id ))
+        resp_url=resp_data.get('url').encode('ascii','ignore').replace('"','')
+        resp_title=resp_data.get('title').encode('ascii','ignore').replace('"','')
+        resp_notes=resp_data.get('notes').encode('ascii','ignore').replace('"','') 
+        cursor.execute("""SELECT InsertLink(%s, %s, %s, %s) """,(resp_url, resp_title, resp_notes, post_id ))
